@@ -105,11 +105,11 @@ void loop(void)
     btn9.press(down && btn9.contains(pixel_y, pixel_x));
     btn0.press(down && btn0.contains(pixel_y, pixel_x));
 
-    if (btn1.isPressed()){
+    Serial.println("justReleased : " + String(btn1.justReleased()) + ", isPressed : " + String(btn1.isPressed()) + ", justPressed : " + String(btn1.justPressed()));
+
+    if (btn1.justPressed()){
       Serial.println(1);
       btn1.drawButton(true);
-    }else if(btn1.justReleased()) {
-      btn1.drawButton(false);
     }
     if (btn2.isPressed()){
       Serial.println(2);
