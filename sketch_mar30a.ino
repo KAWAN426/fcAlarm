@@ -7,6 +7,7 @@ MCUFRIEND_kbv tft;
 #define minsPRESSURE 200
 #define MAXPRESSURE 1000
 #include <string.h>
+#include <TimeLib.h>
 
 // ALL Touch panels and wiring is DIFFERENT
 // copy-paste results from TouchScreen_Calibr_native.ino
@@ -16,12 +17,17 @@ const int TS_LEFT = 907, TS_RT = 136, TS_TOP = 942, TS_BOT = 139;
 TouchScreen ts = TouchScreen(XP, YP, XM, YM, 300);
 
 Adafruit_GFX_Button btn1, btn2, btn3, btn4, btn5, btn6, btn7, btn8, btn9, btn0,
-  hourBtn,minsBtn,colBtn,applyBtn,cancelBtn;
+  hoursBtn,minsBtn,colBtn,applyBtn,cancelBtn;
 
-char hour[3] = {'0', '0', '\0'};
+char hours[3] = {'0', '0', '\0'};
 char mins[3] = {'0', '0', '\0'};
 bool isHour = true;
 unsigned long time = 0;
+bool alarmOn = false;
+int hoursInt, minInt;
+bool doneTimer = false;
+bool onChange = false;
+bool reDrawBtn = false;
 
 int pixel_x, pixel_y;     //Touch_getXY() updates global vars
 bool Touch_getXY(void)
@@ -58,6 +64,15 @@ void showmsgXY(int x, int y, int sz, const GFXfont *f, const char *msg)
     tft.setTextSize(sz);
     tft.print(msg);
 }
+void hidemsgXY(int x, int y, int sz, const GFXfont *f, const char *msg){
+    int16_t x1, y1;
+    uint16_t wid, ht;
+    tft.setFont(f);
+    tft.setCursor(x, y);
+    tft.setTextColor(BLACK);
+    tft.setTextSize(sz);
+    tft.print(msg);
+}
 
 int width = 38;
 int height = 38;
@@ -73,14 +88,18 @@ int getTop(int line){
 char* changeTime(char time, Adafruit_GFX_Button clickBtn) {
   clickBtn.drawButton(true);
   if(isHour){
-    hour[0] = hour[1];
-    hour[1] = time;
+    hours[0] = hours[1];
+    hours[1] = time;
+    hoursBtn.initButton(&tft, getLeft(4) + 20, getTop(1) + 25, 55, 55, BLACK, WHITE, BLACK, hours, 4);
+    hoursBtn.drawButton(true);
   } else {
     mins[0] = mins[1];
     mins[1] = time;
     if(atoi(mins) > 60){
       strcpy(mins, "60");
     }
+    minsBtn.initButton(&tft, getLeft(6), getTop(1) + 25, 55, 55, BLACK, WHITE, BLACK, mins, 4);
+    minsBtn.drawButton(true);
   }
 }
 
@@ -93,149 +112,244 @@ void setup(void)
     tft.setRotation(1);
     tft.fillScreen(BLACK);
 
-    btn1.initButton(&tft, getLeft(1), getTop(1), width, height, WHITE, WHITE, BLACK, "1", 2);
-    btn2.initButton(&tft, getLeft(2), getTop(1), width, height, WHITE, WHITE, BLACK, "2", 2);
-    btn3.initButton(&tft, getLeft(3), getTop(1), width, height, WHITE, WHITE, BLACK, "3", 2);
-    btn4.initButton(&tft, getLeft(1), getTop(2), width, height, WHITE, WHITE, BLACK, "4", 2);
-    btn5.initButton(&tft, getLeft(2), getTop(2), width, height, WHITE, WHITE, BLACK, "5", 2);
-    btn6.initButton(&tft, getLeft(3), getTop(2), width, height, WHITE, WHITE, BLACK, "6", 2);
-    btn7.initButton(&tft, getLeft(1), getTop(3), width, height, WHITE, WHITE, BLACK, "7", 2);
-    btn8.initButton(&tft, getLeft(2), getTop(3), width, height, WHITE, WHITE, BLACK, "8", 2);
-    btn9.initButton(&tft, getLeft(3), getTop(3), width, height, WHITE, WHITE, BLACK, "9", 2);
-    btn0.initButton(&tft, getLeft(2), getTop(4), width, height, WHITE, WHITE, BLACK, "0", 2);
-    btn1.drawButton(false);
-    btn2.drawButton(false);
-    btn3.drawButton(false);
-    btn4.drawButton(false);
-    btn5.drawButton(false);
-    btn6.drawButton(false);
-    btn7.drawButton(false);
-    btn8.drawButton(false);
-    btn9.drawButton(false);
-    btn0.drawButton(false);
-
-    hourBtn.initButton(&tft, getLeft(4) + 20, getTop(1) + 25, 55, 55, BLACK, WHITE, BLACK, hour, 4);
-    hourBtn.drawButton(true);
-    colBtn.initButton(&tft, getLeft(5) + 13, getTop(1) + 25, 0, 0, BLACK, WHITE, BLACK, ":", 6);
-    colBtn.drawButton(true);
-    minsBtn.initButton(&tft, getLeft(6), getTop(1) + 25, 55, 55, BLACK, WHITE, BLACK, mins, 4);
-    minsBtn.drawButton(true);
-
-    applyBtn.initButton(&tft, getLeft(5) + 13, getTop(3), 125, 45, WHITE, WHITE, BLACK, "Apply", 2.5);
-    applyBtn.drawButton(true);
-
-    cancelBtn.initButton(&tft, getLeft(5) + 13, getTop(4) + 15, 125, 45, WHITE, WHITE, BLACK, "Cancle", 2.5);
-    cancelBtn.drawButton(true);
+    drawTimer();
 }
 
-/* two buttons are quite simple
- */
+
 void loop(void)
 {
-    bool down = Touch_getXY();
-    btn1.press(down && btn1.contains(pixel_y, pixel_x));
-    btn2.press(down && btn2.contains(pixel_y, pixel_x));
-    btn3.press(down && btn3.contains(pixel_y, pixel_x));
-    btn4.press(down && btn4.contains(pixel_y, pixel_x));
-    btn5.press(down && btn5.contains(pixel_y, pixel_x));
-    btn6.press(down && btn6.contains(pixel_y, pixel_x));
-    btn7.press(down && btn7.contains(pixel_y, pixel_x));
-    btn8.press(down && btn8.contains(pixel_y, pixel_x));
-    btn9.press(down && btn9.contains(pixel_y, pixel_x));
-    btn0.press(down && btn0.contains(pixel_y, pixel_x));
-    
-    hourBtn.press(down && hourBtn.contains(pixel_y, pixel_x));
-    minsBtn.press(down && minsBtn.contains(pixel_y, pixel_x));
 
-    delay(50);
+    if(alarmOn){
+      char combinedStr[sizeof(hours) + sizeof(mins) + 1];
+      
+      strcpy(combinedStr, hours); // 첫 번째 문자열 복사
+      strcat(combinedStr, ":"); // 구분자 추가
+      strcat(combinedStr, mins); // 두 번째 문자열 추가
 
-//    Serial.println(String(hour) + " " + String(mins));
-    
-    if (btn1.justPressed()){
-      changeTime('1',btn1);
-    }else if(!btn1.isPressed() && btn1.justReleased()) {
-      btn1.drawButton(false);
-    }
-    if (btn2.justPressed()){
-      changeTime('2',btn2);
-    }else if(!btn2.isPressed() && btn2.justReleased()) {
-      btn2.drawButton(false);
-    }
-    if (btn3.justPressed()){
-      changeTime('3',btn3);
-    }else if(!btn3.isPressed() && btn3.justReleased()) {
-      btn3.drawButton(false);
-    }
-    if (btn4.justPressed()){
-      changeTime('4',btn4);
-    }else if(!btn4.isPressed() && btn4.justReleased()) {
-      btn4.drawButton(false);
-    }
-    if (btn5.justPressed()){
-      changeTime('5',btn5);
-    }else if(!btn5.isPressed() && btn5.justReleased()) {
-      btn5.drawButton(false);
-    }
-    if (btn6.justPressed()){
-      changeTime('6',btn6);
-    }else if(!btn6.isPressed() && btn6.justReleased()) {
-      btn6.drawButton(false);
-    }
-    if (btn7.justPressed()){
-      changeTime('7',btn7);
-    }else if(!btn7.isPressed() && btn7.justReleased()) {
-      btn7.drawButton(false);
-    }
-    if (btn8.justPressed()){
-      changeTime('8',btn8);
-    }else if(!btn8.isPressed() && btn8.justReleased()) {
-      btn8.drawButton(false);
-    }
-    if (btn9.justPressed()){
-      changeTime('9',btn9);
-    }else if(!btn9.isPressed() && btn9.justReleased()) {
-      btn9.drawButton(false);
-    }
-    if (btn0.justPressed()){
-      changeTime('0',btn0);
-    }else if(!btn0.isPressed() && btn0.justReleased()) {
-      btn0.drawButton(false);
-    }
-    
-    if (hourBtn.justPressed()){
-      isHour = true;
-      minsBtn.initButton(&tft, getLeft(6), getTop(1) + 25, 55, 55, BLACK, WHITE, BLACK, mins, 4);
-      minsBtn.drawButton(true);
-      hourBtn.initButton(&tft, getLeft(4) + 20, getTop(1) + 25, 55, 55, BLACK, WHITE, BLACK, hour, 4);
-      hourBtn.drawButton(true);
-    }
-    if (minsBtn.justPressed()){
-      isHour = false;
-      minsBtn.drawButton(true);
-      minsBtn.initButton(&tft, getLeft(6), getTop(1) + 25, 55, 55, BLACK, WHITE, BLACK, mins, 4);
-      minsBtn.drawButton(true);
-      hourBtn.initButton(&tft, getLeft(4) + 20, getTop(1) + 25, 55, 55, BLACK, WHITE, BLACK, hour, 4);
-      hourBtn.drawButton(true);
-    }
+      showmsgXY(getLeft(3), 10, 2, NULL, "FCAlarm");
+      showmsgXY(getLeft(2) + 5, getTop(2), 6, NULL, combinedStr);
+      
+      bool down = Touch_getXY();
+      cancelBtn.press(down && cancelBtn.contains(pixel_y, pixel_x));
+      cancelBtn.initButton(&tft, getLeft(4), getTop(4) + 15, 125, 45, WHITE, WHITE, BLACK, "Cancle", 2.5);
+      if (cancelBtn.justPressed()){
+        cancelBtn.drawButton(true);
+        tft.fillScreen(BLACK);
+        delay(500);
+        alarmOn = false;
+        drawTimer();
+      }
+      
+      if(second() % 60 == 0 && !doneTimer){
+        minInt -= 1;
+        onChange = true;
+        if(minInt == -1){
+          minInt = 59;
+          hoursInt -= 1;
+          if(hoursInt == -1){
+            hoursInt = 0;
+            minInt = 0;
+            
+            doneTimer = true;
+          }
+        }
+      }
+      
+      if(onChange){
+        onChange = false;
+        if (hoursInt < 10) {
+          hours[0] = '0';
+          hours[1] = hoursInt + '0';
+          hours[2] = '\0';
+        } else {
+          itoa(hoursInt, hours, 10);
+        }
+        if (minInt < 10) {
+          mins[0] = '0';
+          mins[1] = minInt + '0';
+          mins[2] = '\0';
+        } else {
+          itoa(minInt, mins, 10);
+        }
+        hidemsgXY(getLeft(2) + 5, getTop(2), 6, NULL, combinedStr);
+      }
 
-    time += 1;
-    
-    if(isHour){
-      if(time % 20 == 0){
-        hourBtn.initButton(&tft, getLeft(4) + 20, getTop(1) + 25, 55, 55, BLACK, WHITE, BLACK, hour, 4);
-        hourBtn.drawButton(true);
-      }else if(time % 20 == 10) {
-        hourBtn.initButton(&tft, getLeft(4) + 20, getTop(1) + 25, 55, 55, BLACK, BLACK, BLACK, hour, 4);
-        hourBtn.drawButton(true);
+      if(doneTimer){
+        cancelBtn.initButton(&tft, getLeft(4), getTop(4) + 15, 125, 45, WHITE, WHITE, BLACK, "Done", 2.5);
+        if(!reDrawBtn){
+          cancelBtn.drawButton(false); 
+          reDrawBtn = true;
+        }
       }
     }else{
-      if(time % 20 == 0){
-        minsBtn.initButton(&tft, getLeft(6), getTop(1) + 25, 55, 55, BLACK, WHITE, BLACK, mins, 4);
-        minsBtn.drawButton(true);
-      }else if(time % 20 == 10) {
-        minsBtn.initButton(&tft, getLeft(6), getTop(1) + 25, 55, 55, BLACK, BLACK, BLACK, mins, 4);
-        minsBtn.drawButton(true);
-      } 
+      setTimer(); 
     }
+}
+
+void drawTimer() {
+  btn1.initButton(&tft, getLeft(1), getTop(1) + 30, width, height, WHITE, WHITE, BLACK, "1", 2);
+  btn2.initButton(&tft, getLeft(2), getTop(1) + 30, width, height, WHITE, WHITE, BLACK, "2", 2);
+  btn3.initButton(&tft, getLeft(3), getTop(1) + 30, width, height, WHITE, WHITE, BLACK, "3", 2);
+  btn4.initButton(&tft, getLeft(1), getTop(2) + 30, width, height, WHITE, WHITE, BLACK, "4", 2);
+  btn5.initButton(&tft, getLeft(2), getTop(2) + 30, width, height, WHITE, WHITE, BLACK, "5", 2);
+  btn6.initButton(&tft, getLeft(3), getTop(2) + 30, width, height, WHITE, WHITE, BLACK, "6", 2);
+  btn7.initButton(&tft, getLeft(1), getTop(3) + 30, width, height, WHITE, WHITE, BLACK, "7", 2);
+  btn8.initButton(&tft, getLeft(2), getTop(3) + 30, width, height, WHITE, WHITE, BLACK, "8", 2);
+  btn9.initButton(&tft, getLeft(3), getTop(3) + 30, width, height, WHITE, WHITE, BLACK, "9", 2);
+  btn0.initButton(&tft, getLeft(2), getTop(4) + 30, width, height, WHITE, WHITE, BLACK, "0", 2);
+  btn1.drawButton(false);
+  btn2.drawButton(false);
+  btn3.drawButton(false);
+  btn4.drawButton(false);
+  btn5.drawButton(false);
+  btn6.drawButton(false);
+  btn7.drawButton(false);
+  btn8.drawButton(false);
+  btn9.drawButton(false);
+  btn0.drawButton(false);
+
+  hoursBtn.initButton(&tft, getLeft(4) + 20, getTop(1) + 25, 55, 55, BLACK, WHITE, BLACK, hours, 4);
+  hoursBtn.drawButton(true);
+  colBtn.initButton(&tft, getLeft(5) + 13, getTop(1) + 25, 0, 0, BLACK, WHITE, BLACK, ":", 6);
+  colBtn.drawButton(true);
+  minsBtn.initButton(&tft, getLeft(6), getTop(1) + 25, 55, 55, BLACK, WHITE, BLACK, mins, 4);
+  minsBtn.drawButton(true);
+
+  applyBtn.initButton(&tft, getLeft(5) + 13, getTop(3), 125, 45, WHITE, WHITE, BLACK, "Apply", 2.5);
+  applyBtn.drawButton(true);
+
+  cancelBtn.initButton(&tft, getLeft(5) + 13, getTop(4) + 15, 125, 45, WHITE, WHITE, BLACK, "Cancle", 2.5);
+  cancelBtn.drawButton(true);
+
+  showmsgXY(getLeft(1) + 7, 10, 2, NULL, "FCAlarm");
+}
+
+void setTimer() {
+  bool down = Touch_getXY();
+  btn1.press(down && btn1.contains(pixel_y, pixel_x));
+  btn2.press(down && btn2.contains(pixel_y, pixel_x));
+  btn3.press(down && btn3.contains(pixel_y, pixel_x));
+  btn4.press(down && btn4.contains(pixel_y, pixel_x));
+  btn5.press(down && btn5.contains(pixel_y, pixel_x));
+  btn6.press(down && btn6.contains(pixel_y, pixel_x));
+  btn7.press(down && btn7.contains(pixel_y, pixel_x));
+  btn8.press(down && btn8.contains(pixel_y, pixel_x));
+  btn9.press(down && btn9.contains(pixel_y, pixel_x));
+  btn0.press(down && btn0.contains(pixel_y, pixel_x));
+  
+  hoursBtn.press(down && hoursBtn.contains(pixel_y, pixel_x));
+  minsBtn.press(down && minsBtn.contains(pixel_y, pixel_x));
+  
+  applyBtn.press(down && applyBtn.contains(pixel_y, pixel_x));
+  cancelBtn.press(down && cancelBtn.contains(pixel_y, pixel_x));
+  
+  if (btn1.justPressed()){
+    changeTime('1',btn1);
+  }else if(!btn1.isPressed() && btn1.justReleased()) {
+    btn1.drawButton(false);
+  }
+  if (btn2.justPressed()){
+    changeTime('2',btn2);
+  }else if(!btn2.isPressed() && btn2.justReleased()) {
+    btn2.drawButton(false);
+  }
+  if (btn3.justPressed()){
+    changeTime('3',btn3);
+  }else if(!btn3.isPressed() && btn3.justReleased()) {
+    btn3.drawButton(false);
+  }
+  if (btn4.justPressed()){
+    changeTime('4',btn4);
+  }else if(!btn4.isPressed() && btn4.justReleased()) {
+    btn4.drawButton(false);
+  }
+  if (btn5.justPressed()){
+    changeTime('5',btn5);
+  }else if(!btn5.isPressed() && btn5.justReleased()) {
+    btn5.drawButton(false);
+  }
+  if (btn6.justPressed()){
+    changeTime('6',btn6);
+  }else if(!btn6.isPressed() && btn6.justReleased()) {
+    btn6.drawButton(false);
+  }
+  if (btn7.justPressed()){
+    changeTime('7',btn7);
+  }else if(!btn7.isPressed() && btn7.justReleased()) {
+    btn7.drawButton(false);
+  }
+  if (btn8.justPressed()){
+    changeTime('8',btn8);
+  }else if(!btn8.isPressed() && btn8.justReleased()) {
+    btn8.drawButton(false);
+  }
+  if (btn9.justPressed()){
+    changeTime('9',btn9);
+  }else if(!btn9.isPressed() && btn9.justReleased()) {
+    btn9.drawButton(false);
+  }
+  if (btn0.justPressed()){
+    changeTime('0',btn0);
+  }else if(!btn0.isPressed() && btn0.justReleased()) {
+    btn0.drawButton(false);
+  }
+  
+  if (hoursBtn.justPressed()){
+    isHour = true;
+    minsBtn.initButton(&tft, getLeft(6), getTop(1) + 25, 55, 55, BLACK, WHITE, BLACK, mins, 4);
+    minsBtn.drawButton(true);
+    hoursBtn.initButton(&tft, getLeft(4) + 20, getTop(1) + 25, 55, 55, BLACK, WHITE, BLACK, hours, 4);
+    hoursBtn.drawButton(true);
+  }
+  if (minsBtn.justPressed()){
+    isHour = false;
+    minsBtn.drawButton(true);
+    minsBtn.initButton(&tft, getLeft(6), getTop(1) + 25, 55, 55, BLACK, WHITE, BLACK, mins, 4);
+    minsBtn.drawButton(true);
+    hoursBtn.initButton(&tft, getLeft(4) + 20, getTop(1) + 25, 55, 55, BLACK, WHITE, BLACK, hours, 4);
+    hoursBtn.drawButton(true);
+  }
+
+  delay(50);
+  time += 1;
+
+  if(time >= 20000){
+    time = 0;
+  }
+  
+  if(isHour){
+    if(time % 20 == 0){
+      hoursBtn.initButton(&tft, getLeft(4) + 20, getTop(1) + 25, 55, 55, BLACK, WHITE, BLACK, hours, 4);
+      hoursBtn.drawButton(true);
+    }else if(time % 20 == 10) {
+      hoursBtn.initButton(&tft, getLeft(4) + 20, getTop(1) + 25, 55, 55, BLACK, BLACK, BLACK, hours, 4);
+      hoursBtn.drawButton(true);
+    }
+  }else{
+    if(time % 20 == 0){
+      minsBtn.initButton(&tft, getLeft(6), getTop(1) + 25, 55, 55, BLACK, WHITE, BLACK, mins, 4);
+      minsBtn.drawButton(true);
+    }else if(time % 20 == 10) {
+      minsBtn.initButton(&tft, getLeft(6), getTop(1) + 25, 55, 55, BLACK, BLACK, BLACK, mins, 4);
+      minsBtn.drawButton(true);
+    } 
+  }
+
+  if (applyBtn.justPressed()){
+    hoursInt = atoi(hours); 
+    minInt = atoi(mins); 
+    if(minInt > 0 && hoursInt >= 0){
+      Serial.println("Alarm on");
+      tft.fillScreen(BLACK);
+      delay(500);
+      alarmOn = true;
+      cancelBtn.initButton(&tft, getLeft(4), getTop(4) + 15, 125, 45, WHITE, WHITE, BLACK, "Cancle", 2.5);
+      cancelBtn.drawButton(false); 
+    }
+  }
+  if (cancelBtn.justPressed()){
+     
+  }
+
 }
 #endif
