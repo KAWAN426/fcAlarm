@@ -28,6 +28,7 @@ int hoursInt, minInt;
 bool doneTimer = false;
 bool onChange = false;
 bool reDrawBtn = false;
+int previousSecond = -1;
 
 int pixel_x, pixel_y;     //Touch_getXY() updates global vars
 bool Touch_getXY(void)
@@ -139,20 +140,28 @@ void loop(void)
         alarmOn = false;
         drawTimer();
       }
-      
-      if(second() % 60 == 0 && !doneTimer){
-        minInt -= 1;
-        onChange = true;
-        if(minInt == -1){
-          minInt = 59;
-          hoursInt -= 1;
-          if(hoursInt == -1){
-            hoursInt = 0;
-            minInt = 0;
-            
-            doneTimer = true;
+
+      delay(50);
+
+
+      int currentSecond = second();
+      if (currentSecond != previousSecond) {
+        Serial.println(currentSecond);
+        if (second() % 60 == 0 && !doneTimer && !onChange){
+          minInt -= 1;
+          onChange = true;
+          if(minInt == -1){
+            minInt = 59;
+            hoursInt -= 1;
+            if(hoursInt == -1){
+              hoursInt = 0;
+              minInt = 0;
+              
+              doneTimer = true;
+            }
           }
         }
+        previousSecond = currentSecond;
       }
       
       if(onChange){
@@ -344,7 +353,8 @@ void setTimer() {
       delay(500);
       alarmOn = true;
       cancelBtn.initButton(&tft, getLeft(4), getTop(4) + 15, 125, 45, WHITE, WHITE, BLACK, "Cancle", 2.5);
-      cancelBtn.drawButton(false); 
+      cancelBtn.drawButton(false);
+      setTime(0, 0, 0, 2, 4, 2023);
     }
   }
   if (cancelBtn.justPressed()){
