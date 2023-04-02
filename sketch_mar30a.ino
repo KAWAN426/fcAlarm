@@ -347,7 +347,7 @@ void setTimer() {
   if (applyBtn.justPressed()){
     hoursInt = atoi(hours); 
     minInt = atoi(mins); 
-    if(minInt > 0 && hoursInt >= 0){
+    if(minInt > 0 || hoursInt >= 0){
       Serial.println("Alarm on");
       tft.fillScreen(BLACK);
       delay(500);
