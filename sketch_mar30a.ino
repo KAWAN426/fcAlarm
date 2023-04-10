@@ -30,6 +30,15 @@ bool onChange = false;
 bool reDrawBtn = false;
 int previousSecond = -1;
 
+int speakerPin = 36;
+int in2 = 30;
+int in1 = 31;
+int ena = 32;
+
+int in4 = 40;
+int in3 = 41;
+int enb = 42;
+
 int pixel_x, pixel_y;     //Touch_getXY() updates global vars
 bool Touch_getXY(void)
 {
@@ -114,6 +123,17 @@ void setup(void)
     tft.fillScreen(BLACK);
 
     drawTimer();
+
+//    pinMode(trigPin, OUTPUT);
+//    pinMode(echoPin, INPUT);
+
+    pinMode(ena,OUTPUT);
+    pinMode(in1,OUTPUT);
+    pinMode(in2,OUTPUT);
+
+    pinMode(enb,OUTPUT);
+    pinMode(in3,OUTPUT);
+    pinMode(in4,OUTPUT);
 }
 
 
@@ -121,7 +141,8 @@ void loop(void)
 {
 
     if(alarmOn){
-      char combinedStr[sizeof(hours) + sizeof(mins) + 1];
+      if(!doneTimer){
+        char combinedStr[sizeof(hours) + sizeof(mins) + 1];
       
       strcpy(combinedStr, hours); // 첫 번째 문자열 복사
       strcat(combinedStr, ":"); // 구분자 추가
@@ -147,7 +168,7 @@ void loop(void)
       int currentSecond = second();
       if (currentSecond != previousSecond) {
         Serial.println(currentSecond);
-        if (second() % 60 == 0 && !doneTimer && !onChange){
+        if (second() % 10 == 0 && !doneTimer && !onChange){
           minInt -= 1;
           onChange = true;
           if(minInt == -1){
@@ -181,10 +202,38 @@ void loop(void)
           itoa(minInt, mins, 10);
         }
         hidemsgXY(getLeft(2) + 5, getTop(2), 6, NULL, combinedStr);
-      }
-
-      if(doneTimer){
+      }  
+      }else if(doneTimer){
+        bool down = Touch_getXY();
+        cancelBtn.press(down && cancelBtn.contains(pixel_y, pixel_x));
         cancelBtn.initButton(&tft, getLeft(4), getTop(4) + 15, 125, 45, WHITE, WHITE, BLACK, "Done", 2.5);
+        tone(speakerPin, 1000);
+
+        if (cancelBtn.justPressed()){
+          cancelBtn.drawButton(true);
+          tft.fillScreen(BLACK);
+          doneTimer = false;
+          noTone(speakerPin);
+          delay(500);
+          alarmOn = false;
+          drawTimer();
+          
+          digitalWrite(ena,LOW);
+        digitalWrite(in1,LOW);
+        digitalWrite(in2,LOW);
+        digitalWrite(enb,LOW);
+        digitalWrite(in3,LOW);
+        digitalWrite(in4,LOW);
+        }
+
+
+        digitalWrite(ena,HIGH);
+        digitalWrite(in1,HIGH);
+        digitalWrite(in2,LOW);
+        digitalWrite(enb,HIGH);
+        digitalWrite(in3,HIGH);
+        digitalWrite(in4,LOW);
+       
         if(!reDrawBtn){
           cancelBtn.drawButton(false); 
           reDrawBtn = true;
@@ -195,7 +244,20 @@ void loop(void)
     }
 }
 
+void moveAlarm() {
+  digitalWrite(ena,HIGH);
+  digitalWrite(in1,LOW);
+  digitalWrite(in2,HIGH);
+}
+
 void drawTimer() {
+  noTone(speakerPin); 
+          digitalWrite(ena,LOW);
+        digitalWrite(in1,LOW);
+        digitalWrite(in2,LOW);
+        digitalWrite(enb,LOW);
+        digitalWrite(in3,LOW);
+        digitalWrite(in4,LOW);
   btn1.initButton(&tft, getLeft(1), getTop(1) + 30, width, height, WHITE, WHITE, BLACK, "1", 2);
   btn2.initButton(&tft, getLeft(2), getTop(1) + 30, width, height, WHITE, WHITE, BLACK, "2", 2);
   btn3.initButton(&tft, getLeft(3), getTop(1) + 30, width, height, WHITE, WHITE, BLACK, "3", 2);
